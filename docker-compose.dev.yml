@@ -1,0 +1,17 @@
+# Local development only. Use together with the main file:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Deliberately NOT named docker-compose.override.yml, which Docker Compose
+# would load automatically on the RepoRun host too.
+services:
+  web:
+    ports:
+      - "3000:3000"
+    environment:
+      # Plain http on localhost: browsers like Safari drop Secure cookies there.
+      COOKIE_SECURE: "false"
+
+  db:
+    # Published on 5433 (not 5432) so the API tests (npm test in server/) can
+    # reach it without clashing with a locally installed PostgreSQL.
+    ports:
+      - "5433:5432"

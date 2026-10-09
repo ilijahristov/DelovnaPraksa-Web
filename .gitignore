@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# CoursesHub: persistent Docker data (Postgres)
+.stack-data/

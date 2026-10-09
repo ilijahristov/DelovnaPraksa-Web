@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+
+/* "Ink and paper": warm paper background, ink-dark text, deep teal actions,
+   amber highlights. Literata for headings, Inter for text, mono course codes. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Literata', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-paper: #f6f2ea;
+  --color-paper-deep: #ebe4d6;
+  --color-ink: #1c2629;
+  --color-ink-soft: #52615f;
+  --color-teal-deep: #0e5552;
+  --color-teal: #137a74;
+  --color-teal-light: #3fb3a8;
+  --color-amber: #e3a53b;
+  --color-amber-soft: #f8e6c2;
+  --color-danger: #b4322a;
+  --color-danger-soft: #f8dedb;
+}
+
+@layer base {
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-teal-deep text-paper hover:bg-teal;
+  }
+  .btn-secondary {
+    @apply border border-ink/20 bg-white text-ink hover:border-ink/40 hover:bg-paper;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-danger/90;
+  }
+  .btn-ghost-danger {
+    @apply px-2 py-1 text-danger hover:bg-danger-soft;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  .input {
+    @apply w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink placeholder:text-ink-soft/60 focus:border-teal focus:ring-2 focus:ring-teal/25 focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-ink;
+  }
+  .card {
+    @apply rounded-lg border border-ink/10 bg-white shadow-[0_1px_0_rgba(28,38,41,0.06)];
+  }
+}
