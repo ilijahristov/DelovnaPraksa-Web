@@ -1,7 +1,8 @@
 services:
   web:
     build: .
-    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 256m
     depends_on:
       db:
         condition: service_healthy
@@ -23,7 +24,8 @@ services:
 
   db:
     image: postgres:16-alpine
-    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 256m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-courseshub}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

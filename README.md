@@ -110,12 +110,15 @@ created by the earlier Prisma version and does nothing on a fresh database.
 
 ## Deploying on RepoRun
 
-The repo root contains what RepoRun expects: `docker-compose.yml` (services `web` and `db`, no
-`ports`/`container_name`, persistent data under `./.stack-data/`, `db` healthcheck), `stack.yml`
-(public ingress to `web:3000`) and a multi-stage `Dockerfile`.
+The repo root contains what RepoRun expects: `docker-compose.yml` (services `web` and `db`, each
+with `cpus` and `mem_limit`; no `ports`, `container_name`, `env_file`, labels, restart policies or
+custom networks; persistent data under `./.stack-data/`; `db` healthcheck), `stack.yml` (public
+ingress to `web:3000`) and a multi-stage `Dockerfile`.
 
-1. **Connect the repo and branch:** in RepoRun, add this GitHub repository and choose the branch
-   to deploy.
+1. **Connect the repo and branch:** RepoRun clones over SSH only. Copy the stack's public deploy
+   key from its details page into GitHub (repo → Settings → Deploy keys, read-only). Then on the
+   stack page enter the SSH URL (`git@github.com:<user>/<repo>.git`), the branch, and repo path
+   `/`, and test the connection.
 2. **Set Environment values:** add `POSTGRES_PASSWORD`, `JWT_SECRET`, `SEED_PROFESSOR_EMAIL` and
    `SEED_PROFESSOR_PASSWORD` (plus any optional variables from the table, e.g. `SEED_DEMO_DATA=true`).
 3. **Validate:** run RepoRun's validation and fix anything it reports.

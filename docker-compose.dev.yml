@@ -4,6 +4,7 @@
 # would load automatically on the RepoRun host too.
 services:
   web:
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -11,6 +12,7 @@ services:
       COOKIE_SECURE: "false"
 
   db:
+    restart: unless-stopped
     # Published on 5433 (not 5432) so the API tests (npm test in server/) can
     # reach it without clashing with a locally installed PostgreSQL.
     ports:
