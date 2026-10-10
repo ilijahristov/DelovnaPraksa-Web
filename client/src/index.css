@@ -1,0 +1,54 @@
+@import 'tailwindcss';
+
+/* Plain, portal-style look: system font, light grey page, white bordered
+   panels, one brand colour for links and primary actions. */
+@theme {
+  --font-sans: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+
+  --color-page: #f3f4f6;
+  --color-line: #d9dde3;
+  --color-ink: #1f2933;
+  --color-muted: #5f6b7a;
+  --color-brand: #0f5e5a;
+  --color-brand-dark: #0b4744;
+  --color-brand-soft: #e7f1f0;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdeceb;
+}
+
+@layer base {
+  body {
+    @apply bg-page font-sans text-ink antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply border-brand bg-brand text-white hover:border-brand-dark hover:bg-brand-dark;
+  }
+  .btn-secondary {
+    @apply border-line bg-white text-ink hover:bg-page;
+  }
+  .btn-danger {
+    @apply border-danger bg-danger text-white hover:opacity-90;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
+  }
+  .link-danger {
+    @apply text-sm text-danger hover:underline disabled:opacity-60;
+  }
+  .input {
+    @apply w-full rounded border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-ink;
+  }
+  .panel {
+    @apply rounded-md border border-line bg-white;
+  }
+}

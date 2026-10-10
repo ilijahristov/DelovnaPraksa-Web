@@ -1,0 +1,13 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    globalSetup: ['./tests/globalSetup.ts'],
+    fileParallelism: false,
+    env: {
+      NODE_ENV: 'test',
+      JWT_SECRET: 'test-only-secret',
+    },
+  },
+});

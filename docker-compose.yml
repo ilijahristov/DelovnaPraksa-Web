@@ -1,0 +1,40 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-courseshub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-courseshub}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      SEED_PROFESSOR_EMAIL: ${SEED_PROFESSOR_EMAIL}
+      SEED_PROFESSOR_PASSWORD: ${SEED_PROFESSOR_PASSWORD}
+      SEED_PROFESSOR_NAME: ${SEED_PROFESSOR_NAME:-}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+    expose:
+      - "3000"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-courseshub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-courseshub}
+    volumes:
+      - ./.stack-data/postgres:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-courseshub}", "-d", "${POSTGRES_DB:-courseshub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
