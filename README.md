@@ -1,11 +1,5 @@
 # CoursesHub
 
-A small course-management web app (student project). Professors create courses,
-add link materials and enroll students; students browse courses and open materials.
-The UI is in Macedonian.
-
-> Студентски проект, не е официјална страница на универзитет.
-
 **Stack:** React + Vite + TypeScript + Tailwind (client) · Node + Express 5 + TypeScript (server) ·
 PostgreSQL 16 with plain SQL (`pg` driver, no ORM) · Docker Compose. In production one `web` container serves the API under
 `/api` and the built frontend (with SPA fallback) on port 3000; a `db` container runs Postgres.
@@ -19,9 +13,8 @@ PostgreSQL 16 with plain SQL (`pg` driver, no ORM) · Docker Compose. In product
 | Professor | Create/edit/delete **own** courses, add/remove link materials, enroll/remove students on own courses, list and delete student accounts |
 
 Roles and course ownership are enforced in server middleware (`requireAuth`, `requireRole`,
-`requireCourseOwner`), not only in the UI. Request bodies are validated with zod.
-Auth is a JWT in an httpOnly, SameSite=Lax cookie (Secure in production); passwords are bcrypt
-hashes. There are no server-side sessions.
+`requireCourseOwner`). Request bodies are validated with zod.
+
 
 ## Local run
 
@@ -34,15 +27,10 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 Open <http://localhost:3000> and log in with `SEED_PROFESSOR_EMAIL` / `SEED_PROFESSOR_PASSWORD`.
 With the values from `.env.example` that is **Test Professor**: `test.professor@example.com` /
-`clientclient`. That password is for local testing only; use a different one on RepoRun.
+`clientclient`.
 Set `SEED_DEMO_DATA=true` for 2 extra professors, 8 students and 6 courses. All demo accounts use
 `SEED_PROFESSOR_PASSWORD`, e.g. `elena.stojanova@example.com` (student) or
 `ana.petrovska@example.com` (professor).
-
-`docker-compose.dev.yml` only adds the port mappings (web on 3000, Postgres on **5433** so it does
-not clash with a locally installed PostgreSQL) and turns off the Secure cookie flag for plain-http
-localhost. It is intentionally not called `docker-compose.override.yml`, which Compose would load
-automatically on the server too.
 
 Data lives in `./.stack-data/postgres` (git-ignored) and survives `docker compose down` / `up`.
 To start from scratch, stop the stack and delete `.stack-data/`.
