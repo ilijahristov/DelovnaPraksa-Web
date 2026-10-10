@@ -1,7 +1,7 @@
 services:
   web:
     build: .
-    cpus: 0.5
+    cpus: 0.25
     mem_limit: 256m
     depends_on:
       db:
@@ -24,7 +24,7 @@ services:
 
   db:
     image: postgres:16-alpine
-    cpus: 0.5
+    cpus: 0.25
     mem_limit: 256m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-courseshub}
