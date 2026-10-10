@@ -1,5 +1,5 @@
 import { createApp } from './app';
-import { prisma } from './db';
+import { pool } from './db';
 import { env } from './env';
 
 export function startServer() {
@@ -9,7 +9,7 @@ export function startServer() {
 
   const shutdown = () => {
     server.close(() => {
-      prisma.$disconnect().finally(() => process.exit(0));
+      pool.end().finally(() => process.exit(0));
     });
   };
   process.on('SIGTERM', shutdown);

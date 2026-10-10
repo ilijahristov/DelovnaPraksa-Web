@@ -1,4 +1,4 @@
-import { prisma } from './db';
+import { pool } from './db';
 import { seed } from './seed';
 
 seed()
@@ -6,4 +6,4 @@ seed()
     console.error(err);
     process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => pool.end());

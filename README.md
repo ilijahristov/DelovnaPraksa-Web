@@ -7,7 +7,7 @@ The UI is in Macedonian.
 > Студентски проект, не е официјална страница на универзитет.
 
 **Stack:** React + Vite + TypeScript + Tailwind (client) · Node + Express 5 + TypeScript (server) ·
-PostgreSQL 16 + Prisma · Docker Compose. In production one `web` container serves the API under
+PostgreSQL 16 with plain SQL (`pg` driver, no ORM) · Docker Compose. In production one `web` container serves the API under
 `/api` and the built frontend (with SPA fallback) on port 3000; a `db` container runs Postgres.
 
 ## Features
@@ -33,6 +33,8 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Open <http://localhost:3000> and log in with `SEED_PROFESSOR_EMAIL` / `SEED_PROFESSOR_PASSWORD`.
+With the values from `.env.example` that is **Test Professor**: `test.professor@example.com` /
+`clientclient`. That password is for local testing only; use a different one on RepoRun.
 Set `SEED_DEMO_DATA=true` for 2 extra professors, 8 students and 6 courses. All demo accounts use
 `SEED_PROFESSOR_PASSWORD`, e.g. `elena.stojanova@example.com` (student) or
 `ana.petrovska@example.com` (professor).
@@ -91,10 +93,32 @@ Generate a secret with e.g. `node -e "console.log(require('crypto').randomBytes(
 `node dist/start.js` (no manual steps needed):
 
 1. Waits for Postgres (retries for ~2 minutes; the stack may be woken from sleep).
-2. Runs `prisma migrate deploy`.
+2. Applies the SQL migrations in `server/migrations/` that have not run yet (see below).
 3. Runs the idempotent seed: the first professor is created only if missing. Demo data is created
    once in a single transaction, so demo courses or students you delete do not come back on restart.
 4. Starts the server on `0.0.0.0:3000` (`GET /api/health` → 200), as the unprivileged `node` user.
+
+## Database
+
+The server talks to PostgreSQL directly through the `pg` driver. All queries are hand-written SQL
+with `$1, $2…` placeholders (helpers in `server/src/db.ts`), so user input is never concatenated
+into a query.
+
+| Table | Columns |
+|---|---|
+| `users` | `id`, `name`, `email` (unique), `password_hash`, `role` (`STUDENT` \| `PROFESSOR`), `created_at` |
+| `courses` | `id`, `code` (unique), `title`, `description`, `owner_id` → `users`, `created_at` |
+| `enrollments` | `user_id` → `users`, `course_id` → `courses`, `created_at`; primary key (`user_id`, `course_id`) |
+| `materials` | `id`, `course_id` → `courses`, `title`, `url`, `created_at` |
+
+Deleting a course cascades to its enrollments and materials; deleting a student cascades to their
+enrollments (`ON DELETE CASCADE`).
+
+**Migrations** are numbered `.sql` files in `server/migrations/`. On start the app runs every file
+that is not yet listed in the `schema_migrations` table, each in its own transaction, in file-name
+order. To change the schema, add a new file (e.g. `003_add_something.sql`); never edit one that
+has already been applied. `002_import_prisma_tables.sql` is a one-time carry-over for databases
+created by the earlier Prisma version and does nothing on a fresh database.
 
 ## Deploying on RepoRun
 
@@ -121,8 +145,10 @@ docker-compose.dev.yml   local port mappings
 stack.yml                RepoRun ingress
 Dockerfile               client build → server build → slim runtime
 server/
-  prisma/                schema + migrations
+  migrations/            numbered SQL migrations
   src/start.ts           entrypoint: wait for DB → migrate → seed → listen
+  src/db.ts              pg connection pool + query helpers
+  src/migrate.ts         migration runner
   src/app.ts             Express app (API, static files, SPA fallback)
   src/middleware/        auth (JWT cookie, roles, ownership), error handling
   src/routes/            auth, courses (+ materials, enrollments), students

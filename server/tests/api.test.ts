@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
-import { prisma } from '../src/db';
+import { execute, pool, queryOne } from '../src/db';
 
 // Tests run against a real Postgres. Everything they create is tagged and removed.
 const app = createApp();
@@ -11,14 +11,19 @@ const emailFor = (who: string) => `${tag}-${who}@example.com`;
 const PASSWORD = 'correct-horse-1';
 
 async function createProfessor(who: string) {
-  return prisma.user.create({
-    data: {
-      name: `Prof ${who}`,
-      email: emailFor(who),
-      passwordHash: await bcrypt.hash(PASSWORD, 4),
-      role: 'PROFESSOR',
-    },
-  });
+  await execute(
+    `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'PROFESSOR')`,
+    [`Prof ${who}`, emailFor(who), await bcrypt.hash(PASSWORD, 4)],
+  );
+}
+
+async function findUser(who: string) {
+  const user = await queryOne<{ id: number; role: string; passwordHash: string }>(
+    'SELECT id, role, password_hash AS "passwordHash" FROM users WHERE email = $1',
+    [emailFor(who)],
+  );
+  if (!user) throw new Error(`user ${who} not found`);
+  return user;
 }
 
 async function loggedInAgent(who: string) {
@@ -28,9 +33,9 @@ async function loggedInAgent(who: string) {
 }
 
 afterAll(async () => {
-  await prisma.course.deleteMany({ where: { code: { startsWith: tag.toUpperCase() } } });
-  await prisma.user.deleteMany({ where: { email: { startsWith: tag } } });
-  await prisma.$disconnect();
+  await execute('DELETE FROM courses WHERE code LIKE $1', [`${tag.toUpperCase()}%`]);
+  await execute('DELETE FROM users WHERE email LIKE $1', [`${tag}%`]);
+  await pool.end();
 });
 
 describe('health', () => {
@@ -53,7 +58,7 @@ describe('auth', () => {
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/SameSite=Lax/i);
 
-    const stored = await prisma.user.findUniqueOrThrow({ where: { email: emailFor('student') } });
+    const stored = await findUser('student');
     expect(stored.role).toBe('STUDENT');
     expect(stored.passwordHash).not.toBe(PASSWORD);
   });
@@ -74,6 +79,11 @@ describe('auth', () => {
     await request(app)
       .post('/api/auth/login')
       .send({ email: emailFor('student'), password: 'wrong-password' })
+      .expect(401);
+    // A classic injection attempt is just a wrong email: queries are parameterized.
+    await request(app)
+      .post('/api/auth/login')
+      .send({ email: "' OR '1'='1", password: "' OR '1'='1" })
       .expect(401);
 
     const agent = request.agent(app);
@@ -107,6 +117,9 @@ describe('role and ownership checks', () => {
       .expect(201);
     courseId = res.body.course.id;
     expect(res.body.course.code).toBe(`${tag}-1`.toUpperCase());
+    expect(res.body.course.owner.name).toBe('Prof owner');
+
+    await owner.post('/api/courses').send({ code: `${tag}-1`, title: 'Дупликат' }).expect(409);
   });
 
   it('returns 403 when a student calls professor-only endpoints', async () => {
@@ -130,7 +143,14 @@ describe('role and ownership checks', () => {
 
   it('lets the owner edit, add a link and enroll a student', async () => {
     const owner = await loggedInAgent('owner');
-    await owner.patch(`/api/courses/${courseId}`).send({ title: 'Нов наслов' }).expect(200);
+    // Editing only the title must keep the code and description.
+    const patched = await owner.patch(`/api/courses/${courseId}`).send({ title: 'Нов наслов' }).expect(200);
+    expect(patched.body.course).toMatchObject({
+      code: `${tag}-1`.toUpperCase(),
+      title: 'Нов наслов',
+      description: 'Опис',
+    });
+
     await owner
       .post(`/api/courses/${courseId}/materials`)
       .send({ title: 'Скрипта', url: 'javascript:alert(1)' })
@@ -140,12 +160,38 @@ describe('role and ownership checks', () => {
       .send({ title: 'Документација', url: 'https://example.com/docs' })
       .expect(201);
 
-    const student = await prisma.user.findUniqueOrThrow({ where: { email: emailFor('student') } });
+    const student = await findUser('student');
     await owner.post(`/api/courses/${courseId}/students`).send({ userId: student.id }).expect(201);
     await owner.post(`/api/courses/${courseId}/students`).send({ userId: student.id }).expect(409);
 
     const studentAgent = await loggedInAgent('student');
     const mine = await studentAgent.get('/api/courses/mine').expect(200);
     expect(mine.body.courses.map((c: { id: number }) => c.id)).toContain(courseId);
+
+    const detail = await studentAgent.get(`/api/courses/${courseId}`).expect(200);
+    expect(detail.body.course).toMatchObject({ isOwner: false, isEnrolled: true, enrolledCount: 1 });
+    expect(detail.body.course.materials).toHaveLength(1);
+
+    // Search is case-insensitive and treats % as a literal character.
+    const found = await studentAgent.get(`/api/courses?q=${tag}`).expect(200);
+    expect(found.body.courses).toHaveLength(1);
+    const none = await studentAgent.get('/api/courses?q=%25%25%25').expect(200);
+    expect(none.body.courses).toHaveLength(0);
+  });
+
+  it('removes enrollments and materials when a course or student is deleted', async () => {
+    const owner = await loggedInAgent('owner');
+    const student = await findUser('student');
+
+    await owner.delete(`/api/students/${student.id}`).expect(204);
+    const roster = await owner.get(`/api/courses/${courseId}/students`).expect(200);
+    expect(roster.body.students).toHaveLength(0);
+
+    await owner.delete(`/api/courses/${courseId}`).expect(204);
+    const left = await queryOne<{ count: number }>(
+      'SELECT count(*)::int AS count FROM materials WHERE course_id = $1',
+      [courseId],
+    );
+    expect(left?.count).toBe(0);
   });
 });

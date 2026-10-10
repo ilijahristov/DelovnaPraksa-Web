@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api, errorMessage, useApi, useDebounced } from '../api';
 import type { EnrolledStudent, StudentAccount } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
-import { Alert, ErrorState, LoadingState, SearchInput, Spinner } from './ui';
+import { Alert, ErrorState, LoadingState, Panel, SearchInput, Spinner } from './ui';
 
 // Owner-only panel on the course page: enrolled students + enroll by search.
 export function CourseStudents({ courseId, onChange }: { courseId: number; onChange: () => void }) {
@@ -43,47 +43,43 @@ export function CourseStudents({ courseId, onChange }: { courseId: number; onCha
     refresh();
   }
 
-  return (
-    <section className="card p-5 sm:p-6">
-      <h2 className="text-xl font-bold">
-        Запишани студенти
-        {enrolled.data && (
-          <span className="ml-2 font-sans text-base font-medium text-ink-soft">
-            ({enrolled.data.students.length})
-          </span>
-        )}
-      </h2>
+  const count = enrolled.data ? ` (${enrolled.data.students.length})` : '';
 
-      <div className="mt-4 rounded-md bg-paper p-4">
-        <p className="label">Запиши студент</p>
+  return (
+    <Panel title={`Запишани студенти${count}`}>
+      <div className="border-b border-line bg-page/50 px-4 py-3">
+        <label className="label" htmlFor="enroll-search">
+          Запиши студент
+        </label>
         <SearchInput
+          id="enroll-search"
           value={query}
           onChange={setQuery}
-          placeholder="Пребарај по име или е-пошта…"
+          placeholder="Име или е-пошта (најмалку 2 знаци)"
           label="Пребарај студент за запишување"
         />
         {actionError && (
-          <div className="mt-3">
+          <div className="mt-2">
             <Alert>{actionError}</Alert>
           </div>
         )}
         {q.length >= 2 && (
-          <div className="mt-3">
+          <div className="mt-2">
             {search.error ? (
               <p className="text-sm text-danger">{search.error.message}</p>
             ) : !search.data || search.loading ? (
-              <p className="flex items-center gap-2 text-sm text-ink-soft">
-                <Spinner className="h-4 w-4" /> Се пребарува…
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <Spinner /> Се пребарува…
               </p>
             ) : candidates.length === 0 ? (
-              <p className="text-sm text-ink-soft">Нема незапишани студенти што одговараат на „{q}“.</p>
+              <p className="text-sm text-muted">Нема незапишани студенти за „{q}“.</p>
             ) : (
-              <ul className="divide-y divide-ink/10 rounded-md border border-ink/10 bg-white">
+              <ul className="divide-y divide-line rounded border border-line bg-white">
                 {candidates.map((s) => (
                   <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{s.name}</p>
-                      <p className="truncate text-xs text-ink-soft">{s.email}</p>
+                    <div className="min-w-0 text-sm">
+                      <span className="font-medium">{s.name}</span>
+                      <span className="ml-2 text-muted">{s.email}</span>
                     </div>
                     <button
                       type="button"
@@ -102,39 +98,33 @@ export function CourseStudents({ courseId, onChange }: { courseId: number; onCha
         )}
       </div>
 
-      <div className="mt-5">
-        {enrolled.error ? (
+      {enrolled.error ? (
+        <div className="p-4">
           <ErrorState message={enrolled.error.message} onRetry={enrolled.reload} />
-        ) : !enrolled.data ? (
-          <LoadingState />
-        ) : enrolled.data.students.length === 0 ? (
-          <p className="py-4 text-center text-sm text-ink-soft">
-            Сè уште нема запишани студенти. Пребарајте студент погоре.
-          </p>
-        ) : (
-          <ul className="divide-y divide-ink/10">
-            {enrolled.data.students.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{s.name}</p>
-                  <p className="truncate text-sm text-ink-soft">{s.email}</p>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-ghost-danger btn-sm shrink-0"
-                  onClick={() => setToRemove(s)}
-                >
-                  Отпиши
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        </div>
+      ) : !enrolled.data ? (
+        <LoadingState />
+      ) : enrolled.data.students.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-muted">Нема запишани студенти.</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {enrolled.data.students.map((s) => (
+            <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{s.name}</p>
+                <p className="truncate text-muted">{s.email}</p>
+              </div>
+              <button type="button" className="link-danger shrink-0" onClick={() => setToRemove(s)}>
+                Отпиши
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {toRemove && (
         <ConfirmDialog
-          title="Отпиши студент?"
+          title="Отпишување на студент"
           confirmLabel="Отпиши"
           onConfirm={() => remove(toRemove)}
           onClose={() => setToRemove(null)}
@@ -142,6 +132,6 @@ export function CourseStudents({ courseId, onChange }: { courseId: number; onCha
           {toRemove.name} ({toRemove.email}) ќе биде отпишан од курсот. Профилот останува.
         </ConfirmDialog>
       )}
-    </section>
+    </Panel>
   );
 }

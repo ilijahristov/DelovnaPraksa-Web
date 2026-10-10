@@ -1,13 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { Router } from 'express';
-import { prisma } from '../db';
-import {
-  clearAuthCookie,
-  publicUserSelect,
-  setAuthCookie,
-  userFromRequest,
-} from '../middleware/auth';
-import { isUniqueViolation } from '../middleware/errors';
+import { isUniqueViolation, queryOne } from '../db';
+import { clearAuthCookie, setAuthCookie, userFromRequest } from '../middleware/auth';
+import type { AuthUser } from '../middleware/auth';
 import { MSG } from '../messages';
 import { loginSchema, signupSchema } from '../schemas';
 
@@ -17,14 +12,18 @@ export const authRouter = Router();
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 
 authRouter.post('/signup', async (req, res) => {
-  // The schema has no role field: unknown keys (including "role") are stripped.
+  // The schema has no role field: unknown keys (including "role") are stripped,
+  // and the INSERT hard-codes STUDENT.
   const { name, email, password } = signupSchema.parse(req.body);
+  const passwordHash = await bcrypt.hash(password, 10);
   try {
-    const user = await prisma.user.create({
-      data: { name, email, passwordHash: await bcrypt.hash(password, 10), role: 'STUDENT' },
-      select: publicUserSelect,
-    });
-    setAuthCookie(res, user);
+    const user = await queryOne<AuthUser>(
+      `INSERT INTO users (name, email, password_hash, role)
+       VALUES ($1, $2, $3, 'STUDENT')
+       RETURNING id, name, email, role`,
+      [name, email, passwordHash],
+    );
+    setAuthCookie(res, user!);
     res.status(201).json({ user });
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -37,7 +36,10 @@ authRouter.post('/signup', async (req, res) => {
 
 authRouter.post('/login', async (req, res) => {
   const { email, password } = loginSchema.parse(req.body);
-  const found = await prisma.user.findUnique({ where: { email } });
+  const found = await queryOne<AuthUser & { passwordHash: string }>(
+    'SELECT id, name, email, role, password_hash AS "passwordHash" FROM users WHERE email = $1',
+    [email],
+  );
   const ok = await bcrypt.compare(password, found?.passwordHash ?? DUMMY_HASH);
   if (!found || !ok) {
     res.status(401).json({ error: MSG.badLogin });

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi, useDebounced } from '../api';
 import { useCurrentUser } from '../auth';
-import { CourseGrid } from '../components/CourseCard';
-import { EmptyState, ErrorState, LoadingState, PageHeader, SearchInput, Spinner } from '../components/ui';
+import { CourseList } from '../components/CourseList';
+import { EmptyState, ErrorState, LoadingState, PageHeader, plural, SearchInput, Spinner } from '../components/ui';
 import type { CourseSummary } from '../types';
 
 export function CoursesPage() {
@@ -19,25 +19,30 @@ export function CoursesPage() {
     <>
       <PageHeader
         title="Курсеви"
-        subtitle="Сите курсеви на платформата."
+        subtitle="Преглед на сите курсеви."
         actions={
           isProfessor && (
             <Link to="/courses/new" className="btn btn-primary">
-              + Нов курс
+              Нов курс
             </Link>
           )
         }
       />
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex-1">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="w-full sm:max-w-sm">
           <SearchInput
             value={query}
             onChange={setQuery}
-            placeholder="Пребарај по код или наслов…"
+            placeholder="Пребарај по код или наслов"
             label="Пребарај курсеви"
           />
         </div>
-        {loading && data && <Spinner className="h-4 w-4 text-ink-soft" />}
+        {data && !error && (
+          <span className="flex items-center gap-2 text-sm text-muted">
+            {loading && <Spinner />}
+            {plural(data.courses.length, 'курс', 'курсеви')}
+          </span>
+        )}
       </div>
 
       {error ? (
@@ -46,8 +51,8 @@ export function CoursesPage() {
         <LoadingState />
       ) : data.courses.length === 0 ? (
         q ? (
-          <EmptyState title="Нема пронајдени курсеви">
-            Ниту еден курс не одговара на „{q}“. Обидете се со друг код или наслов.
+          <EmptyState title="Нема резултати">
+            Ниту еден курс не одговара на „{q}“.
           </EmptyState>
         ) : (
           <EmptyState
@@ -55,16 +60,14 @@ export function CoursesPage() {
             action={
               isProfessor && (
                 <Link to="/courses/new" className="btn btn-primary">
-                  Креирај го првиот курс
+                  Нов курс
                 </Link>
               )
             }
-          >
-            Курсевите ќе се појават тука штом професорите ги додадат.
-          </EmptyState>
+          />
         )
       ) : (
-        <CourseGrid courses={data.courses} />
+        <CourseList courses={data.courses} />
       )}
     </>
   );

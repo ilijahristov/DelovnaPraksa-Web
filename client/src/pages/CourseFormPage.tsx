@@ -61,9 +61,17 @@ export function CourseFormPage() {
     <div className="mx-auto max-w-2xl">
       <PageHeader
         title={isEdit ? 'Уреди курс' : 'Нов курс'}
-        subtitle={isEdit ? loaded?.code : 'Внесете ги основните податоци за курсот.'}
+        crumbs={
+          isEdit && loaded
+            ? [
+                { label: 'Курсеви', to: '/courses' },
+                { label: loaded.code, to: `/courses/${loaded.id}` },
+                { label: 'Уреди' },
+              ]
+            : [{ label: 'Курсеви', to: '/courses' }, { label: 'Нов курс' }]
+        }
       />
-      <form onSubmit={onSubmit} className="card space-y-5 p-5 sm:p-6" noValidate>
+      <form onSubmit={onSubmit} className="panel space-y-5 p-5" noValidate>
         {error && <Alert>{error}</Alert>}
         <Field
           label="Код"
@@ -109,7 +117,7 @@ export function CourseFormPage() {
             Откажи
           </Link>
           <button type="submit" className="btn btn-primary" disabled={busy}>
-            {busy && <Spinner className="h-4 w-4" />}
+            {busy && <Spinner />}
             {isEdit ? 'Зачувај промени' : 'Креирај курс'}
           </button>
         </div>

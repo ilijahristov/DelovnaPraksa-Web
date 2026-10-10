@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
-import { prisma } from './db';
+import { queryOne, withTransaction } from './db';
+import type { Db } from './db';
 import { requireEnv } from './env';
 
 const DEMO_PROFESSORS = [
@@ -42,7 +43,7 @@ const DEMO_COURSES = [
     students: [0, 2, 5, 6],
     materials: [
       { title: 'PostgreSQL документација', url: 'https://www.postgresql.org/docs/current/' },
-      { title: 'Prisma ORM документација', url: 'https://www.prisma.io/docs' },
+      { title: 'SQL туторијал (PostgreSQL)', url: 'https://www.postgresql.org/docs/current/tutorial-sql.html' },
     ],
   },
   {
@@ -92,16 +93,39 @@ const DEMO_COURSES = [
   },
 ];
 
+type Role = 'STUDENT' | 'PROFESSOR';
+
+async function findUserId(email: string, db?: Db): Promise<number | undefined> {
+  const row = await queryOne<{ id: number }>('SELECT id FROM users WHERE email = $1', [email], db);
+  return row?.id;
+}
+
+// Creates the user unless the email is taken; returns the id either way.
+async function ensureUser(
+  user: { name: string; email: string },
+  passwordHash: string,
+  role: Role,
+  db?: Db,
+): Promise<number> {
+  const created = await queryOne<{ id: number }>(
+    `INSERT INTO users (name, email, password_hash, role)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (email) DO NOTHING
+     RETURNING id`,
+    [user.name, user.email, passwordHash, role],
+    db,
+  );
+  return created?.id ?? (await findUserId(user.email, db))!;
+}
+
 export async function seed() {
   const email = requireEnv('SEED_PROFESSOR_EMAIL').trim().toLowerCase();
   const password = requireEnv('SEED_PROFESSOR_PASSWORD');
   const name = process.env.SEED_PROFESSOR_NAME?.trim() || 'Професор';
 
-  let professor = await prisma.user.findUnique({ where: { email } });
-  if (!professor) {
-    professor = await prisma.user.create({
-      data: { name, email, passwordHash: await bcrypt.hash(password, 10), role: 'PROFESSOR' },
-    });
+  let seedProfessorId = await findUserId(email);
+  if (!seedProfessorId) {
+    seedProfessorId = await ensureUser({ name, email }, await bcrypt.hash(password, 10), 'PROFESSOR');
     console.log(`Seed: created professor ${email}`);
   }
 
@@ -109,41 +133,40 @@ export async function seed() {
 
   // Demo data is created once, in one transaction. The first demo professor is
   // the marker, so courses or students deleted later don't come back on restart.
-  const marker = await prisma.user.findUnique({ where: { email: DEMO_PROFESSORS[0].email } });
-  if (marker) return;
+  if (await findUserId(DEMO_PROFESSORS[0].email)) return;
 
   // Demo accounts share the seed professor's password.
   const passwordHash = await bcrypt.hash(password, 10);
-  const seedProfessorId = professor.id;
-  await prisma.$transaction(async (tx) => {
-    const upsertUser = (u: { name: string; email: string }, role: 'STUDENT' | 'PROFESSOR') =>
-      tx.user.upsert({
-        where: { email: u.email },
-        update: {},
-        create: { ...u, passwordHash, role },
-      });
-
-    const professors: { id: number }[] = [{ id: seedProfessorId }];
-    for (const p of DEMO_PROFESSORS) professors.push(await upsertUser(p, 'PROFESSOR'));
-    const students: { id: number }[] = [];
-    for (const s of DEMO_STUDENTS) students.push(await upsertUser(s, 'STUDENT'));
+  const firstProfessorId = seedProfessorId;
+  await withTransaction(async (tx) => {
+    const professorIds = [firstProfessorId];
+    for (const p of DEMO_PROFESSORS) professorIds.push(await ensureUser(p, passwordHash, 'PROFESSOR', tx));
+    const studentIds: number[] = [];
+    for (const s of DEMO_STUDENTS) studentIds.push(await ensureUser(s, passwordHash, 'STUDENT', tx));
 
     for (const c of DEMO_COURSES) {
-      const existing = await tx.course.findUnique({ where: { code: c.code } });
-      if (existing) continue;
-      const course = await tx.course.create({
-        data: {
-          code: c.code,
-          title: c.title,
-          description: c.description,
-          ownerId: professors[c.owner].id,
-          materials: { create: c.materials },
-        },
-      });
-      await tx.enrollment.createMany({
-        data: c.students.map((i) => ({ userId: students[i].id, courseId: course.id })),
-        skipDuplicates: true,
-      });
+      const course = await queryOne<{ id: number }>(
+        `INSERT INTO courses (code, title, description, owner_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (code) DO NOTHING
+         RETURNING id`,
+        [c.code, c.title, c.description, professorIds[c.owner]],
+        tx,
+      );
+      if (!course) continue; // a course with this code already exists
+      for (const m of c.materials) {
+        await tx.query('INSERT INTO materials (course_id, title, url) VALUES ($1, $2, $3)', [
+          course.id,
+          m.title,
+          m.url,
+        ]);
+      }
+      for (const i of c.students) {
+        await tx.query(
+          'INSERT INTO enrollments (user_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [studentIds[i], course.id],
+        );
+      }
     }
   });
   console.log('Seed: created demo professors, students, courses and enrollments');

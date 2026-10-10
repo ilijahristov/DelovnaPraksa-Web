@@ -83,8 +83,9 @@ export function useDebounced<T>(value: T, delayMs = 250): T {
   return debounced;
 }
 
+// d.m.yyyy, built by hand: not every browser ships Macedonian locale data,
+// and Intl would silently fall back to English.
 export function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('mk-MK', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(value),
-  );
+  const d = new Date(value);
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
 }

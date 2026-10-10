@@ -38,7 +38,7 @@ export function SignupPage() {
       footer={
         <>
           Веќе имате профил?{' '}
-          <Link to="/login" className="font-semibold text-teal-deep hover:underline">
+          <Link to="/login" className="font-medium text-brand hover:underline">
             Најавете се
           </Link>
         </>
@@ -84,10 +84,10 @@ export function SignupPage() {
           />
         </Field>
         <button type="submit" className="btn btn-primary w-full" disabled={busy}>
-          {busy && <Spinner className="h-4 w-4" />}
+          {busy && <Spinner />}
           Креирај профил
         </button>
-        <p className="text-xs text-ink-soft">
+        <p className="text-xs text-muted">
           Сите нови профили се студентски. Професорските профили ги креира администраторот.
         </p>
       </form>

@@ -32,11 +32,11 @@ export function LoginPage() {
   return (
     <AuthCard
       title="Најава"
-      subtitle="Добредојдовте назад на CoursesHub."
+      subtitle="Најавете се со вашата е-пошта и лозинка."
       footer={
         <>
           Немате профил?{' '}
-          <Link to="/signup" className="font-semibold text-teal-deep hover:underline">
+          <Link to="/signup" className="font-medium text-brand hover:underline">
             Регистрирајте се
           </Link>
         </>
@@ -67,7 +67,7 @@ export function LoginPage() {
           />
         </Field>
         <button type="submit" className="btn btn-primary w-full" disabled={busy}>
-          {busy && <Spinner className="h-4 w-4" />}
+          {busy && <Spinner />}
           Најави се
         </button>
       </form>

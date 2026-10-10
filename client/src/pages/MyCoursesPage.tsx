@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useApi } from '../api';
 import { useCurrentUser } from '../auth';
-import { CourseGrid } from '../components/CourseCard';
+import { CourseList } from '../components/CourseList';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
 import type { CourseSummary } from '../types';
 
@@ -14,11 +14,11 @@ export function MyCoursesPage() {
     <>
       <PageHeader
         title="Мои курсеви"
-        subtitle={isProfessor ? 'Курсевите што ги водите.' : 'Курсевите на кои сте запишани.'}
+        subtitle={isProfessor ? 'Курсеви што ги водите.' : 'Курсеви на кои сте запишани.'}
         actions={
           isProfessor && (
             <Link to="/courses/new" className="btn btn-primary">
-              + Нов курс
+              Нов курс
             </Link>
           )
         }
@@ -30,29 +30,27 @@ export function MyCoursesPage() {
       ) : data.courses.length === 0 ? (
         isProfessor ? (
           <EmptyState
-            title="Сè уште немате курс"
+            title="Немате креирано курс"
             action={
               <Link to="/courses/new" className="btn btn-primary">
-                Креирај курс
+                Нов курс
               </Link>
             }
-          >
-            Креирајте курс, додадете материјали и запишете студенти.
-          </EmptyState>
+          />
         ) : (
           <EmptyState
             title="Не сте запишани на ниту еден курс"
             action={
               <Link to="/courses" className="btn btn-secondary">
-                Види ги сите курсеви
+                Сите курсеви
               </Link>
             }
           >
-            Професорот на курсот ве запишува. Дотогаш можете да ги разгледувате сите курсеви.
+            На курс ве запишува професорот што го води.
           </EmptyState>
         )
       ) : (
-        <CourseGrid courses={data.courses} />
+        <CourseList courses={data.courses} />
       )}
     </>
   );

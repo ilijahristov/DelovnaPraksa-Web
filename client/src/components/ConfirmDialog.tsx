@@ -41,25 +41,25 @@ export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onClos
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[15vh]"
       onClick={(e) => e.target === e.currentTarget && !busy && onClose()}
     >
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="card w-full max-w-md p-6"
+        className="w-full max-w-md rounded-md bg-white shadow-lg"
       >
-        <h2 id="confirm-title" className="text-xl font-bold">
-          {title}
-        </h2>
-        <div className="mt-2 text-sm text-ink-soft">{children}</div>
-        {error && (
-          <div className="mt-4">
-            <Alert>{error}</Alert>
-          </div>
-        )}
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="border-b border-line px-5 py-3">
+          <h2 id="confirm-title" className="text-base font-semibold">
+            {title}
+          </h2>
+        </div>
+        <div className="space-y-3 px-5 py-4 text-sm">
+          <div>{children}</div>
+          {error && <Alert>{error}</Alert>}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line bg-page/60 px-5 py-3">
           <button
             ref={cancelRef}
             type="button"
@@ -70,7 +70,7 @@ export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onClos
             Откажи
           </button>
           <button type="button" className="btn btn-danger" onClick={confirm} disabled={busy}>
-            {busy && <Spinner className="h-4 w-4" />}
+            {busy && <Spinner />}
             {confirmLabel}
           </button>
         </div>

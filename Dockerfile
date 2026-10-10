@@ -8,28 +8,24 @@ RUN npm run build
 
 # ---- 2. Build the Express backend ----
 FROM node:22-alpine AS server-build
-RUN apk add --no-cache openssl
 WORKDIR /server
 COPY server/package.json server/package-lock.json ./
-COPY server/prisma ./prisma
 RUN npm ci
 COPY server/ ./
-RUN npx prisma generate && npm run build
+RUN npm run build
 
 # ---- 3. Slim runtime image ----
 FROM node:22-alpine AS runtime
-RUN apk add --no-cache openssl
 ENV NODE_ENV=production \
-    PORT=3000 \
-    CHECKPOINT_DISABLE=1
+    PORT=3000
 WORKDIR /app
 
-# Production deps only. The prisma CLI is a runtime dependency because the
-# container runs `prisma migrate deploy` on every start.
+# Production dependencies only.
 COPY server/package.json server/package-lock.json ./
-COPY server/prisma ./prisma
-RUN npm ci --omit=dev && npx prisma generate && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
+# SQL migrations are applied by the app on every start.
+COPY server/migrations ./migrations
 COPY --from=server-build /server/dist ./dist
 COPY --from=client-build /client/dist ./public
 

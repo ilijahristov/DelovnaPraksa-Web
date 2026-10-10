@@ -25,7 +25,7 @@ export const loginSchema = z.object({
   password: z.string({ error: 'Внесете лозинка.' }).min(1, 'Внесете лозинка.'),
 });
 
-export const courseSchema = z.object({
+const courseFields = {
   code: z
     .string({ error: 'Внесете код.' })
     .trim()
@@ -38,10 +38,16 @@ export const courseSchema = z.object({
     .trim()
     .min(3, 'Насловот мора да има најмалку 3 знаци.')
     .max(150, 'Насловот е предолг.'),
-  description: z.string().trim().max(2000, 'Описот може да има најмногу 2000 знаци.').default(''),
+  description: z.string().trim().max(2000, 'Описот може да има најмногу 2000 знаци.'),
+};
+
+export const courseSchema = z.object({
+  ...courseFields,
+  description: courseFields.description.default(''),
 });
 
-export const courseUpdateSchema = courseSchema.partial();
+// No default here: a field that is not sent must stay unchanged.
+export const courseUpdateSchema = z.object(courseFields).partial();
 
 export const materialSchema = z.object({
   title: z
